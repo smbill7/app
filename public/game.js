@@ -3,6 +3,7 @@ class Snake {
         this.segments = [{x, y}];
         this.direction = {x: 1, y: 0};
         this.score = 0;
+        this.growing = false;
     }
 
     move() {
@@ -12,20 +13,24 @@ class Snake {
             y: head.y + this.direction.y
         };
         this.segments.unshift(newHead);
-        this.segments.pop();
+        if (!this.growing) {
+            this.segments.pop();
+        }
+        this.growing = false;
     }
 
     grow() {
-        const tail = this.segments[this.segments.length - 1];
-        this.segments.push({...tail});
+        this.growing = true;
         this.score += 10;
     }
 
     checkCollision(width, height) {
         const head = this.segments[0];
+        // 벽과의 충돌 체크
         if (head.x < 0 || head.x >= width || head.y < 0 || head.y >= height) {
             return true;
         }
+        // 자신의 몸과의 충돌 체크 (머리를 제외한 나머지 부분과의 충돌)
         for (let i = 1; i < this.segments.length; i++) {
             if (head.x === this.segments[i].x && head.y === this.segments[i].y) {
                 return true;
@@ -34,7 +39,6 @@ class Snake {
         return false;
     }
 
-    // 특정 위치가 뱀의 몸과 겹치는지 확인하는 메서드 추가
     isPositionOccupied(x, y) {
         return this.segments.some(segment => segment.x === x && segment.y === y);
     }
@@ -45,7 +49,6 @@ class Food {
         this.position = {x: 0, y: 0};
     }
 
-    // 뱀의 위치를 고려하여 먹이 위치 설정
     randomize(width, height, snake) {
         let newX, newY;
         do {
@@ -79,6 +82,7 @@ class Game {
         this.lastTime = 0;
         this.accumulator = 0;
         this.timestep = 100; // 뱀의 이동 속도 (밀리초)
+        this.isPaused = false;
         
         requestAnimationFrame(this.gameLoop.bind(this));
     }
@@ -111,21 +115,23 @@ class Game {
     }
 
     update() {
-        this.snake.move();
-        
+        // 먹이를 먹었는지 체크
         const head = this.snake.segments[0];
         if (head.x === this.food.position.x && head.y === this.food.position.y) {
             this.snake.grow();
             this.food.randomize(this.width, this.height, this.snake);
             this.scoreElement.textContent = this.snake.score;
         }
+
+        // 이동 후 충돌 체크
+        this.snake.move();
         
+        // 벽이나 자신의 몸과 충돌했을 때만 게임 오버
         if (this.snake.checkCollision(this.width, this.height)) {
             const playAgain = confirm('게임 오버! 점수: ' + this.snake.score + '\n다시 시작하시겠습니까?');
             if (playAgain) {
                 this.reset();
             } else {
-                // 게임 중지
                 this.pause();
             }
         }
@@ -157,7 +163,7 @@ class Game {
     }
 
     gameLoop(currentTime) {
-        if (this.lastTime) {
+        if (this.lastTime && !this.isPaused) {
             const deltaTime = currentTime - this.lastTime;
             this.accumulator += deltaTime;
             
