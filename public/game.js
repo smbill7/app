@@ -33,6 +33,11 @@ class Snake {
         }
         return false;
     }
+
+    // 특정 위치가 뱀의 몸과 겹치는지 확인하는 메서드 추가
+    isPositionOccupied(x, y) {
+        return this.segments.some(segment => segment.x === x && segment.y === y);
+    }
 }
 
 class Food {
@@ -40,9 +45,16 @@ class Food {
         this.position = {x: 0, y: 0};
     }
 
-    randomize(width, height) {
-        this.position.x = Math.floor(Math.random() * width);
-        this.position.y = Math.floor(Math.random() * height);
+    // 뱀의 위치를 고려하여 먹이 위치 설정
+    randomize(width, height, snake) {
+        let newX, newY;
+        do {
+            newX = Math.floor(Math.random() * width);
+            newY = Math.floor(Math.random() * height);
+        } while (snake.isPositionOccupied(newX, newY));
+        
+        this.position.x = newX;
+        this.position.y = newY;
     }
 }
 
@@ -61,7 +73,7 @@ class Game {
         
         this.snake = new Snake(Math.floor(this.width / 2), Math.floor(this.height / 2));
         this.food = new Food();
-        this.food.randomize(this.width, this.height);
+        this.food.randomize(this.width, this.height, this.snake);
         
         this.bindControls();
         this.lastTime = 0;
@@ -104,13 +116,18 @@ class Game {
         const head = this.snake.segments[0];
         if (head.x === this.food.position.x && head.y === this.food.position.y) {
             this.snake.grow();
-            this.food.randomize(this.width, this.height);
+            this.food.randomize(this.width, this.height, this.snake);
             this.scoreElement.textContent = this.snake.score;
         }
         
         if (this.snake.checkCollision(this.width, this.height)) {
-            alert('게임 오버! 점수: ' + this.snake.score);
-            this.reset();
+            const playAgain = confirm('게임 오버! 점수: ' + this.snake.score + '\n다시 시작하시겠습니까?');
+            if (playAgain) {
+                this.reset();
+            } else {
+                // 게임 중지
+                this.pause();
+            }
         }
     }
 
@@ -152,13 +169,21 @@ class Game {
         
         this.lastTime = currentTime;
         this.draw();
-        requestAnimationFrame(this.gameLoop.bind(this));
+        if (!this.isPaused) {
+            requestAnimationFrame(this.gameLoop.bind(this));
+        }
     }
 
     reset() {
         this.snake = new Snake(Math.floor(this.width / 2), Math.floor(this.height / 2));
-        this.food.randomize(this.width, this.height);
+        this.food.randomize(this.width, this.height, this.snake);
         this.scoreElement.textContent = '0';
+        this.isPaused = false;
+        requestAnimationFrame(this.gameLoop.bind(this));
+    }
+
+    pause() {
+        this.isPaused = true;
     }
 }
 
