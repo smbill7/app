@@ -2,9 +2,11 @@ const express = require('express');
 const path = require('path');
 const app = express();
 
-app.use(express.static('public'));
+// 정적 파일 제공
+app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/', (req, res) => {
+// 모든 경로에서 index.html 제공
+app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
